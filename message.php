@@ -118,36 +118,44 @@
     }
 
     // Reject user
-    if (isset($_GET['reject'])) {
-        $userId = $_GET['reject'];
+if (isset($_GET['reject'])) {
+    $userId = $_GET['reject'];
 
-        // Prepare and execute the UPDATE statement
-        $stmt = $conn->prepare("UPDATE userlogin SET status = 'rejected' WHERE id = ?");
-        if ($stmt === false) {
-            die("Error preparing the UPDATE query: " . $conn->error);
-        }
-        $stmt->bind_param("i", $userId);
-        if (!$stmt->execute()) {
-            die("Error executing the UPDATE query: " . $stmt->error);
-        }
-
-        // Fetch user email to send notification
-        $userQuery = $conn->prepare("SELECT email, name FROM userlogin WHERE id = ?");
-        if ($userQuery === false) {
-            die("Error preparing the SELECT query for rejection: " . $conn->error);
-        }
-        $userQuery->bind_param("i", $userId);
-        if (!$userQuery->execute()) {
-            die("Error executing the SELECT query for rejection: " . $userQuery->error);
-        }
-        $user = $userQuery->get_result()->fetch_assoc();
-        sendNotificationEmail($user['name'], $user['email'], 'Rejected');
-
-        // Redirect to refresh the page and show the updated list of users
-        header("Location: message.php");
-        exit();
+    // Prepare and execute the UPDATE statement
+    $stmt = $conn->prepare("UPDATE userlogin SET status = 'rejected' WHERE id = ?");
+    if ($stmt === false) {
+        die("Error preparing the UPDATE query: " . $conn->error);
+    }
+    $stmt->bind_param("i", $userId);
+    if (!$stmt->execute()) {
+        die("Error executing the UPDATE query: " . $stmt->error);
     }
 
+    // Fetch user email to send notification
+    $userQuery = $conn->prepare("SELECT email, name FROM userlogin WHERE id = ?");
+    if ($userQuery === false) {
+        die("Error preparing the SELECT query for rejection: " . $conn->error);
+    }
+    $userQuery->bind_param("i", $userId);
+    if (!$userQuery->execute()) {
+        die("Error executing the SELECT query for rejection: " . $userQuery->error);
+    }
+    $user = $userQuery->get_result()->fetch_assoc();
+    sendNotificationEmail($user['name'], $user['email'], 'Rejected');
+
+    // Delete the last record from the building table
+    $deleteLastRecordStmt = $conn->prepare("DELETE FROM building WHERE id = (SELECT MAX(id) FROM building)");
+    if ($deleteLastRecordStmt === false) {
+        die("Error preparing the DELETE query: " . $conn->error);
+    }
+    if (!$deleteLastRecordStmt->execute()) {
+        die("Error executing the DELETE query: " . $deleteLastRecordStmt->error);
+    }
+
+    // Redirect to refresh the page and show the updated list of users
+    header("Location: message.php");
+    exit();
+}
     // Close the connection
     $conn->close();
     ?>
